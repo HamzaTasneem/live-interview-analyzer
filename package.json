@@ -1,0 +1,13 @@
+{
+  "name": "live-interview-analyzer",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "pnpm --parallel --filter backend --filter frontend dev",
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "test:pg": "pnpm --filter backend test:pg",
+    "e2e": "pnpm --filter e2e test"
+  },
+  "packageManager": "pnpm@11.10.0"
+}

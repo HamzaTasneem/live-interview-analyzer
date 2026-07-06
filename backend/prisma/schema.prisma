@@ -1,0 +1,92 @@
+// Portable schema: SQLite in dev, Postgres in prod (CD5).
+// JSON payloads are stored as String and (de)serialized in the service
+// layer so the schema works on both connectors.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  role         String // admin | assessor | candidate
+  name         String
+  createdAt    DateTime  @default(now())
+  invites      Invite[]  @relation("AssessorInvites")
+  sessions     Session[] @relation("CandidateSessions")
+  assessing    Session[] @relation("AssessorSessions")
+}
+
+model Invite {
+  id         String    @id @default(cuid())
+  assessorId String
+  assessor   User      @relation("AssessorInvites", fields: [assessorId], references: [id])
+  code       String    @unique
+  email      String?
+  expiresAt  DateTime
+  usedAt     DateTime?
+  createdAt  DateTime  @default(now())
+}
+
+model Session {
+  id            String         @id @default(cuid())
+  candidateId   String
+  candidate     User           @relation("CandidateSessions", fields: [candidateId], references: [id])
+  assessorId    String?
+  assessor      User?          @relation("AssessorSessions", fields: [assessorId], references: [id])
+  roleField     String
+  status        String         @default("created") // created | active | ended | reported
+  consentAt     DateTime?
+  startedAt     DateTime?
+  endedAt       DateTime?
+  createdAt     DateTime       @default(now())
+  questions     Question[]
+  metricWindows MetricWindow[]
+  report        Report?
+  recording     Recording?
+}
+
+model Question {
+  id        String    @id @default(cuid())
+  sessionId String
+  session   Session   @relation(fields: [sessionId], references: [id])
+  order     Int
+  text      String
+  askedAt   DateTime?
+}
+
+model MetricWindow {
+  id        String   @id @default(cuid())
+  sessionId String
+  session   Session  @relation(fields: [sessionId], references: [id])
+  ts        DateTime
+  signals   String // JSON blob, one summary per second; never queried inside SQL
+
+  @@index([sessionId, ts])
+}
+
+model Report {
+  id         String   @id @default(cuid())
+  sessionId  String   @unique
+  session    Session  @relation(fields: [sessionId], references: [id])
+  scores     String // JSON blob
+  feedbackMd String
+  transcript String
+  createdAt  DateTime @default(now())
+}
+
+model Recording {
+  id         String    @id @default(cuid())
+  sessionId  String    @unique
+  session    Session   @relation(fields: [sessionId], references: [id])
+  objectKey  String
+  size       Int       @default(0)
+  expiresAt  DateTime
+  uploadedAt DateTime?
+}
